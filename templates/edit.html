@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>✏️ Edit Action</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background-color: #f9f9f9;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    form {
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    textarea {
+      resize: vertical;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    a {
+      text-decoration: none;
+      color: #555;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>✏️ Edit Action for {{ date }}</h2>
+
+  <form method="post">
+    <label for="time">Time:</label>
+    <input type="datetime-local" name="time" value="{{ action.time[:16]|replace(' ', 'T') }}" required>
+
+    <label for="type">Type:</label>
+    <select name="type" required>
+      <option value="create_comment" {% if action.type == 'create_comment' %}selected{% endif %}>Create Comment</option>
+      <option value="reply_comment" {% if action.type == 'reply_comment' %}selected{% endif %}>Reply to Comment</option>
+      <option value="follow" {% if action.type == 'follow' %}selected{% endif %}>Follow</option>
+      <option value="send_dm" {% if action.type == 'send_dm' %}selected{% endif %}>Send DM</option>
+      <option value="reply_dm" {% if action.type == 'reply_dm' %}selected{% endif %}>Reply to DM</option>
+      <option value="view_story" {% if action.type == 'view_story' %}selected{% endif %}>View Story</option>
+      <option value="like_post" {% if action.type == 'like_post' %}selected{% endif %}>Like Post</option>
+    </select>
+
+    <label for="account">Account:</label>
+    <input type="text" name="account" value="{{ action.account }}" required>
+
+    <label for="link">Link:</label>
+    <input type="text" name="link" value="{{ action.link }}">
+
+    <label for="content">Content:</label>
+    <textarea name="content" rows="4">{{ action.content }}</textarea>
+
+    <button type="submit">💾 Save Changes</button>
+    <a href="{{ url_for('view_plan_for_date', date=date) }}">⬅ Back</a>
+  </form>
+
+</body>
+</html>
