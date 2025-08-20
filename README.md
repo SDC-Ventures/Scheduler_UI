@@ -10,7 +10,6 @@ A tiny Flask app that generates a daily plan of Instagram actions (comments, lik
 
 - **Daily plan generator** (per date) that:
   - Produces randomized, human-like times
-  - Adds random **seconds** (no more `:00`)
   - Schedules **`post_post`** actions specifically between **18:00–21:00**; other types spread across the day
   - Generates concise copy via OpenAI for actions that require text
   - Saves atomically to prevent JSON corruption
@@ -36,7 +35,6 @@ A tiny Flask app that generates a daily plan of Instagram actions (comments, lik
 │  └─ edit.html               # Edit an action
 ├─ plans/
 │  └─ daily_plan_YYYY-MM-DD.json   # One plan per date (created at runtime)
-├─ executed_actions.json      # Log of executed actions (created at runtime)
 └─ requirements.txt
 ```
 
@@ -103,7 +101,6 @@ The scheduler reads today’s plan every minute; when an item’s time has passe
 - `like_comment`    *(no AI copy)*
 
 **UI labels/order** are handled in the templates.  
-If you only rename in the UI, keep the backend keys the same (as above).
 
 ---
 
