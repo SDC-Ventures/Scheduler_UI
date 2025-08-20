@@ -4,102 +4,24 @@
 <head>
   <title>📋 Action Dashboard</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background-color: #fafafa;
-    }
-
-    h2, h3 {
-      margin-bottom: 10px;
-    }
-
-    label {
-      font-weight: bold;
-    }
-
-    form {
-      margin-bottom: 15px;
-    }
-
-    button {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      margin-left: 10px;
-      cursor: pointer;
-      border-radius: 4px;
-    }
-
-    button:hover {
-      background-color: #45a049;
-    }
-
-    .date-buttons button {
-      background-color: #f0f0f0;
-      color: #333;
-      border: 1px solid #ccc;
-      margin: 2px;
-      padding: 4px 8px;
-    }
-
-    .date-buttons button:hover {
-      background-color: #ddd;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      background-color: white;
-    }
-
-    th, td {
-      padding: 10px;
-      border: 1px solid #ddd;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    tr:nth-child(even) {
-      background-color: #f9f9f9;
-    }
-
-    tr.executed {
-      background-color: #e6ffe6;
-    }
-
-    .actions a {
-      margin: 0 5px;
-      text-decoration: none;
-    }
-
-    .actions a:hover {
-      text-decoration: underline;
-    }
-
-    .type-inputs {
-      margin-top: 10px;
-    }
-
-    .type-inputs label {
-      display: inline-block;
-      margin-right: 10px;
-    }
-
-    /* New: keep the toggle form inline like the links */
-    .actions form {
-      display: inline;
-      margin: 0;
-      padding: 0;
-    }
-
-    .toggle-btn {
-      background: #1976d2;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-right: 6px;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #fafafa; }
+    h2, h3 { margin-bottom: 10px; }
+    label { font-weight: bold; }
+    form { margin-bottom: 15px; }
+    button { background-color: #4CAF50; color: white; border: none; padding: 6px 12px; margin-left: 10px; cursor: pointer; border-radius: 4px; }
+    button:hover { background-color: #45a049; }
+    .date-buttons button { background-color: #f0f0f0; color: #333; border: 1px solid #ccc; margin: 2px; padding: 4px 8px; }
+    .date-buttons button:hover { background-color: #ddd; }
+    table { border-collapse: collapse; width: 100%; background-color: white; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; vertical-align: top; }
+    tr:nth-child(even) { background-color: #f9f9f9; }
+    tr.executed { background-color: #e6ffe6; }
+    .actions a { margin: 0 5px; text-decoration: none; }
+    .actions a:hover { text-decoration: underline; }
+    .type-inputs { margin-top: 10px; }
+    .type-inputs label { display: inline-block; margin-right: 10px; }
+    .actions form { display: inline; margin: 0; padding: 0; }
+    .toggle-btn { background: #1976d2; padding: 4px 8px; border-radius: 4px; margin-right: 6px; }
     .toggle-btn.pending { background: #1976d2; }
     .toggle-btn.executed { background: #9e9e9e; }
   </style>
@@ -113,10 +35,38 @@
     <input type="date" id="selected_date" name="selected_date" required>
 
     <div class="type-inputs">
-      {% for type in ["create_comment", "send_dm", "like_post", "reply_comment", "follow", "reply_dm", "view_story"] %}
-        <label>{{ type }}:
-          <input type="number" name="{{ type }}" min="0" value="1" style="width: 50px;">
-        </label>
+      {# Backend keys we expect #}
+      {% set available = action_types if action_types is defined else [
+        "create_comment", "reply_comment", "like_post", "post_post", "post_story", "like_comment"
+      ] %}
+
+      {# Preferred UI order (DISPLAY NAMES) mapped to backend keys #}
+      {% set display_map = {
+        "post_post": "post_post",
+        "post_story": "post_story",
+        "like_post": "like_post",
+        "create_comment": "comment_post",
+        "like_comment": "like_comment",
+        "reply_comment": "reply_comment"
+      } %}
+
+      {# Build ordered list of backend keys in the above order #}
+      {% set order_keys = ["post_post","post_story","like_post","create_comment","like_comment","reply_comment"] %}
+      {% for key in order_keys %}
+        {% if key in available %}
+          <label>{{ display_map[key] }}:
+            <input type="number" name="{{ key }}" min="0" value="1" style="width: 50px;">
+          </label>
+        {% endif %}
+      {% endfor %}
+
+      {# Append any leftovers not in the preferred order #}
+      {% for key in available %}
+        {% if key not in order_keys %}
+          <label>{{ key }}:
+            <input type="number" name="{{ key }}" min="0" value="1" style="width: 50px;">
+          </label>
+        {% endif %}
       {% endfor %}
     </div>
 
@@ -148,19 +98,25 @@
       </tr>
     </thead>
     <tbody>
+      {% set type_label = {
+       "create_comment": "comment_post",
+       "reply_comment": "reply_comment",
+       "like_post": "like_post",
+       "post_post": "post_post",
+       "post_story": "post_story",
+       "like_comment": "like_comment"
+       } %}
       {% for action in actions %}
       <tr class="{% if action.executed %}executed{% endif %}">
         <td>{{ loop.index }}</td>
         <td>{{ action.time }}</td>
-        <td>{{ action.type }}</td>
+        <td>{{ type_label.get(action.type, action.type) }}</td>
         <td>{{ action.account }}</td>
         <td><a href="{{ action.link }}" target="_blank">🔗</a></td>
         <td>{{ action.content }}</td>
         <td>{% if action.executed %}✔ Executed{% else %}⏳ Pending{% endif %}</td>
         <td class="actions">
-          <!-- New: toggle executed/pending -->
-          <form method="post"
-                action="{{ url_for('toggle_executed', date=current_date, index=loop.index0) }}">
+          <form method="post" action="{{ url_for('toggle_executed', date=current_date, index=loop.index0) }}">
             {% if action.executed %}
               <button class="toggle-btn executed" type="submit" title="Set back to pending">✅ Mark Pending</button>
             {% else %}
@@ -169,8 +125,7 @@
           </form>
 
           <a href="{{ url_for('edit', date=current_date, index=loop.index0) }}">✏️ Edit</a> |
-          <a href="{{ url_for('delete', date=current_date, index=loop.index0) }}"
-             onclick="return confirm('Delete this action?')">🗑️ Delete</a>
+          <a href="{{ url_for('delete', date=current_date, index=loop.index0) }}" onclick="return confirm('Delete this action?')">🗑️ Delete</a>
         </td>
       </tr>
       {% endfor %}
