@@ -8,10 +8,8 @@ app = Flask(__name__)
 PLANS_DIR = "plans"
 os.makedirs(PLANS_DIR, exist_ok=True)
 
-ACTION_TYPES = [
-    "create_comment", "send_dm", "like_post",
-    "reply_comment", "follow", "reply_dm", "view_story"
-]
+ACTION_TYPES = ["create_comment", "reply_comment", "like_post",
+                "post_post", "post_story", "like_comment"]
 
 def get_plan_path(date_str):
     return os.path.join(PLANS_DIR, f"daily_plan_{date_str}.json")

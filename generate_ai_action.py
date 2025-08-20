@@ -105,11 +105,44 @@ def generate_text_for_type(action_type: str) -> str:
         print(f"⚠️ Text generation error for {action_type}: {e}")
         return ""
 
+def randomized_times(count, start_hour=9, end_hour=21, min_gap_min=20, max_gap_min=180):
+    """
+    Return a list of (hour, minute) tuples spread somewhat human-like within the window.
+    """
+    slots = []
+    current_minutes = start_hour * 60 + random.randint(0, 30)
+    end_minutes = end_hour * 60
+
+    for _ in range(count):
+        # record the current slot
+        h, m = divmod(current_minutes, 60)
+        slots.append((h, m))
+
+        # advance by a random gap
+        current_minutes += random.randint(min_gap_min, max_gap_min)
+        if current_minutes > end_minutes:
+            break
+
+    # If we produced fewer than requested, jitter forward a bit until we reach count
+    while len(slots) < count and slots:
+        h, m = slots[-1]
+        m += random.randint(7, 20)
+        if m >= 60:
+            h += 1
+            m -= 60
+        # clamp to end of window if we overflow
+        if h * 60 + m > end_minutes:
+            h, m = divmod(end_minutes, 60)
+        slots.append((h, m))
+
+    return slots[:count]
+
 def generate_daily_plan_for_date(date_str, type_counts):
     """
     Create a plan file with randomized human-like times and concise, natural copy.
     - date_str: 'YYYY-MM-DD'
-    - type_counts: dict like {'create_comment': 1, 'send_dm': 1, 'like_post': 1, ...}
+    - type_counts: dict like {'create_comment': 1, 'reply_comment': 1, 'like_post': 1,
+                              'post_post': 1, 'post_story': 1, 'like_comment': 1}
     """
     plan_path = get_plan_path(date_str)
     if os.path.exists(plan_path):
@@ -121,29 +154,25 @@ def generate_daily_plan_for_date(date_str, type_counts):
     actions = []
     base_date = datetime.strptime(date_str, "%Y-%m-%d")
 
-    # Randomize between 8:00–20:59; sample without replacement, refill if needed
-    candidate_times = [(h, m) for h in range(8, 21) for m in range(0, 60)]
-    random.shuffle(candidate_times)
-
-    def next_time():
-        # cycle when we run out
-        nonlocal candidate_times
-        if not candidate_times:
-            candidate_times = [(h, m) for h in range(8, 21) for m in range(0, 60)]
-            random.shuffle(candidate_times)
-        return candidate_times.pop()
+    def times_for_type(a_type, count):
+        if not isinstance(count, int) or count <= 0:
+            return []
+        # Constrain post_post to 6–9 PM
+        if a_type == "post_post":
+            return randomized_times(count, start_hour=18, end_hour=21, min_gap_min=15, max_gap_min=90)
+        # Others use the default window (e.g., 09:00–21:00 inside randomized_times)
+        return randomized_times(count)
 
     for a_type, count in (type_counts or {}).items():
-        # Skip invalid or zero-count entries gracefully
         if not isinstance(count, int) or count <= 0:
             continue
 
-        for _ in range(count):
-            h, m = next_time()
-            tstamp = base_date + timedelta(hours=h, minutes=m)
+        for h, m in times_for_type(a_type, count):
+            # Randomize seconds so we don't get :00 every time
+            sec = random.randint(5, 55)
+            tstamp = base_date + timedelta(hours=h, minutes=m, seconds=sec)
 
             account = generate_account_handle("nature, photography, or travel")
-
             action = {
                 "time": tstamp.strftime("%Y-%m-%d %H:%M:%S"),
                 "type": a_type,
@@ -152,10 +181,9 @@ def generate_daily_plan_for_date(date_str, type_counts):
                 "executed": False
             }
 
-            # Content only if the action type needs text
-            if a_type != "like_post":
+            # Only generate text for types that need it
+            if a_type not in {"like_post", "like_comment"}:
                 text = generate_text_for_type(a_type).strip()
-                # Put a conservative length cap as a last defense against verbosity
                 if len(text) > 220:
                     text = text[:217].rstrip() + "…"
                 if text:
@@ -163,10 +191,16 @@ def generate_daily_plan_for_date(date_str, type_counts):
 
             actions.append(action)
 
+    # Keep the list chronological
+    actions.sort(key=lambda a: a["time"])
+
     if not actions:
         print(f"⚠️ No actions were generated for {date_str}. Plan not saved.")
         return
 
-    with open(plan_path, "w") as f:
+    # Atomic write to avoid JSON corruption
+    tmp_path = plan_path + ".tmp"
+    with open(tmp_path, "w") as f:
         json.dump(actions, f, indent=2, ensure_ascii=False)
+    os.replace(tmp_path, plan_path)
     print(f"✅ Plan for {date_str} saved to {plan_path} with {len(actions)} actions.")
